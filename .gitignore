@@ -22,6 +22,3 @@ mono_crash.*.json
 # Ignore the generated project files
 project.godot
 
-# I used format_on_save to format my plugins code.
-addons/format_on_save/
-
