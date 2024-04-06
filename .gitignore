@@ -1,0 +1,27 @@
+# this file shouldnt be in your project. If you have it, remove it.
+
+# Godot 4+ specific ignores
+.godot/
+
+# Godot-specific ignores
+.import/
+export.cfg
+export_presets.cfg
+
+# Imported translations (automatically generated from CSV files)
+*.translation
+
+# Mono-specific ignores
+.mono/
+data_*/
+mono_crash.*.json
+
+# Ignore any import metadata files
+*.import
+
+# Ignore the generated project files
+project.godot
+
+# I used format_on_save to format my plugins code.
+addons/format_on_save/
+
