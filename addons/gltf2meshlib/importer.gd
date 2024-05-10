@@ -37,8 +37,7 @@ func _get_preset_name(preset_index):
 
 
 func _get_import_options(path, preset_index):
-	#return [{"name": "my_option", "default_value": false}]
-	return []
+	return [{"name": "generate_collision_shape", "default_value": false}]
 
 
 func _get_option_visibility(path, option_name, options):
@@ -110,6 +109,10 @@ func _import(gltf_path: String, save_path, options, platform_variants, gen_files
 		meshLib.create_item(i)
 		meshLib.set_item_mesh(i, mesh)
 		meshLib.set_item_name(i, mesh_node.name)
+		if options.has("generate_collision_shape") and options.generate_collision_shape:
+			var shape = mesh.create_convex_shape(true,true)
+			if shape != null:
+				meshLib.set_item_shapes(i,[shape])
 		var preview: Array[Texture2D] = EditorInterface.make_mesh_previews([mesh], 64)
 		meshLib.set_item_preview(i, preview[0])
 
