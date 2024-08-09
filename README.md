@@ -4,6 +4,8 @@
 
 This plugin allows you to import gltf/glb models as MeshLibrary, which saves a lot of time compared to manual importing.
 
+![showcase](addons/gltf2meshlib/examples/imgs/showcase.png)
+
 ## Usage
 
 you can simply drag and drop gltf/glb files into the editor, select "`GLTF To MeshLibrary`" in the import settings, and it will automatically import your gltf/glb as a MeshLibrary. This allows you to see instant changes after any modification of the gltf file.
@@ -33,7 +35,7 @@ Now you can import Items with flags. Currently there're 2 kinds of flags availab
 
 Here's an example:
 
-![example1](addons/gltf2meshlib/examples/imgs/label_example.png)
+![example_edit_label](addons/gltf2meshlib/examples/imgs/label_example.png)
 
 You can configure collision by adding meshes that indicates the collision shape of the item, and add `--collision` flag to the item.
 

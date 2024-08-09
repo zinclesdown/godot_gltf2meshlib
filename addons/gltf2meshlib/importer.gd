@@ -180,7 +180,6 @@ func _import_hierarchy(gltf_path: String, save_path, options, platform_variants,
 		if convexshape != null:
 			meshLib.set_item_shapes(i, [convexshape])
 
-
 		# if options.has("generate_collision_shape") and options.generate_collision_shape:
 		# 	var shape := mesh.create_convex_shape(true, true)
 		# 	if shape != null:
