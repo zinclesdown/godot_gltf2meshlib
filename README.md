@@ -22,6 +22,21 @@ the second mode would consider hierarchy structure of nodes: that means, if one 
 
 you can change the mode by switching import args `"import_hierarchy"`.
 
+### Flags
+
+Now you can import Items with flags. Currently there're 2 kinds of flags available:
+
+| Flag                    | Description                                                                |
+| ----------------------- | -------------------------------------------------------------------------- |
+| `--collision` or `-col` | whether to import this object as collision shape or not. false by default. |
+| `--noimp`               | whether to import this object or not. false by default.                    |
+
+Here's an example:
+
+![example1](addons/gltf2meshlib/examples/imgs/label_example.png)
+
+You can configure collision by adding meshes that indicates the collision shape of the item, and add `--collision` flag to the item.
+
 ## Issues
 
 for some reason, the editor might raise annoying "Attempted to call reimport_files() recursively, this is not allowed." error while importing mesh as MeshLibrary. Maybe there's still some issues with my code.

@@ -1,5 +1,7 @@
 extends Resource
 
+const FlagsDetect := preload("./flagsdetect.gd")
+
 
 # DEPRECATED Why did I wrote this???
 # Found all nodes, Pack them into an Array.
@@ -36,18 +38,58 @@ static func find_all_matched_nodes(root_node: Node, matcher: Callable) -> Array[
 ## Similar to merge_together, but using recursion to merge layer by layer.
 ## Considering that when importing nodes in the editor, the nodes are not in the tree,
 ## and global_transform is not available at that time, so we can only recursively merge layer by layer.
-static func merge_together_recursively(base_node: Node3D) -> ArrayMesh:
+# static func merge_together_recursively(base_node: Node3D) -> ArrayMesh:
+# 	# Get the Mesh of the current node:
+# 	var new_mesh: ArrayMesh = null
+
+# 	if base_node is MeshInstance3D:
+# 		new_mesh = base_node.mesh as ArrayMesh
+# 	elif base_node is ImporterMeshInstance3D:
+# 		new_mesh = base_node.mesh.get_mesh() as ArrayMesh
+
+# 	for child in base_node.get_children():
+# 		new_mesh = combine_multisurface(
+# 			new_mesh, merge_together_recursively(child), child.transform
+# 		)
+
+# 	return new_mesh
+
+
+static func merge_meshs_together_recursively(base_node: Node3D) -> ArrayMesh:
 	# Get the Mesh of the current node:
 	var new_mesh: ArrayMesh = null
 
-	if base_node is MeshInstance3D:
+	if base_node is MeshInstance3D and not FlagsDetect.import_as_collision(base_node.name):
 		new_mesh = base_node.mesh as ArrayMesh
-	elif base_node is ImporterMeshInstance3D:
+	elif (
+		base_node is ImporterMeshInstance3D and not FlagsDetect.import_as_collision(base_node.name)
+	):
 		new_mesh = base_node.mesh.get_mesh() as ArrayMesh
+	else:
+		new_mesh = ArrayMesh.new()
 
 	for child in base_node.get_children():
 		new_mesh = combine_multisurface(
-			new_mesh, merge_together_recursively(child), child.transform
+			new_mesh, merge_meshs_together_recursively(child), child.transform
+		)
+
+	return new_mesh
+
+
+static func merge_collisions_together_recursively(base_node: Node3D) -> ArrayMesh:
+	# Get the Mesh of the current node:
+	var new_mesh: ArrayMesh
+
+	if base_node is MeshInstance3D and FlagsDetect.import_as_collision(base_node.name):
+		new_mesh = base_node.mesh as ArrayMesh
+	elif base_node is ImporterMeshInstance3D and FlagsDetect.import_as_collision(base_node.name):
+		new_mesh = base_node.mesh.get_mesh() as ArrayMesh
+	else:
+		new_mesh = ArrayMesh.new()
+
+	for child in base_node.get_children():
+		new_mesh = combine_multisurface(
+			new_mesh, merge_collisions_together_recursively(child), child.transform
 		)
 
 	return new_mesh

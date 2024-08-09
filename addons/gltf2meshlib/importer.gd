@@ -17,7 +17,7 @@ extends EditorImportPlugin
 # "Imports".
 const Lambdas := preload("./lambdas.gd")
 const Helpers := preload("./helpers.gd")
-
+const FlagsDetect := preload("./flagsdetect.gd")
 #region plugin_definitions
 
 # In my case the plugin works fine by default.
@@ -160,15 +160,31 @@ func _import_hierarchy(gltf_path: String, save_path, options, platform_variants,
 	# Loop through each item, merge their meshes and apply transformations.
 	var i := 0
 	for item: Node3D in items_root.get_children():
-		var mesh: ArrayMesh = Helpers.merge_together_recursively(item)
+		# Detect flags, see if we should import this item.
+		if FlagsDetect.do_not_import(item.name):
+			continue
+
+		var mesh: ArrayMesh = Helpers.merge_meshs_together_recursively(item)
+		# var mesh := Helpers.merge_collisions_together_recursively(item)
+		# print(mesh)
 
 		meshLib.create_item(i)
 		meshLib.set_item_mesh(i, mesh)
 		meshLib.set_item_name(i, item.name)
-		if options.has("generate_collision_shape") and options.generate_collision_shape:
-			var shape = mesh.create_convex_shape(true, true)
-			if shape != null:
-				meshLib.set_item_shapes(i, [shape])
+
+		var shape_mesh := Helpers.merge_collisions_together_recursively(item)
+		var convexshape
+		if shape_mesh:
+			# convexshape = shape_mesh.create_convex_shape()
+			convexshape = shape_mesh.create_trimesh_shape()
+		if convexshape != null:
+			meshLib.set_item_shapes(i, [convexshape])
+
+
+		# if options.has("generate_collision_shape") and options.generate_collision_shape:
+		# 	var shape := mesh.create_convex_shape(true, true)
+		# 	if shape != null:
+		# 		meshLib.set_item_shapes(i, [shape])
 
 		var preview: Array[Texture2D] = EditorInterface.make_mesh_previews([mesh], 64)
 		meshLib.set_item_preview(i, preview[0])
