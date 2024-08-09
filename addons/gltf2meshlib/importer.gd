@@ -2,6 +2,22 @@
 class_name GLTF2MeshLibraryImporter
 extends EditorImportPlugin
 
+## mode import_hierarchy: import the hierarchy of the GLTF file.
+## mode import_mesh_only: import the mesh of the GLTF file. No hierarchy, all meshes are treated as single items.
+
+## Basically, you can "import a GLTF file into a MeshLibrary" like what Godot does.
+## but, there's another mode that treats every direct node of root as an Item in the MeshLibrary.
+## the second mode treats mesh and its "Child mesh" together as an Item, which is useful in some cases.
+## The second mode also supports "flags".
+## In the second mode, you can use "--collision" or "-col" to convert the mesh into a collision shape.
+## mesh convented into collisionshape would be invisible in editor, no texture, only collision box.
+
+## Use the option "import_hierarchy" to switch between the two modes.
+
+# "Imports".
+const Lambdas := preload("./lambdas.gd")
+const Helpers := preload("./helpers.gd")
+
 #region plugin_definitions
 
 # In my case the plugin works fine by default.
@@ -37,11 +53,18 @@ func _get_preset_name(preset_index):
 
 
 func _get_import_options(path, preset_index):
-	return [{"name": "generate_collision_shape", "default_value": false}]
+	return [
+		{"name": "import_hierarchy", "default_value": true},
+		{"name": "generate_collision_shape", "default_value": false},  # Whether to gen collisionshape.
+	]
 
 
 func _get_option_visibility(path, option_name, options):
 	return true
+
+
+func _get_priority():
+	return 1.0
 
 
 func _get_import_order():
@@ -50,33 +73,17 @@ func _get_import_order():
 
 #endregion
 
+
 #region importer_logics.
-
-
-func _is_ImporterMeshInstance3D(node: Node) -> bool:
-	#print("Node: ", node)
-	if is_instance_of(node, ImporterMeshInstance3D):
-		return true
-	return false
-
-
-# Found all nodes, Pack them into an Array.
-# The matcher should accept one argument (Node),returns a bool.
-func find_first_matched_nodes(root_node: Node, matcher: Callable) -> Array[Node]:
-	var result: Array[Node] = []
-
-	for node: Node in root_node.get_children():
-		var matches: bool = matcher.call(node)
-		if matches == true:
-			result.append(node)
-			continue
-		else:
-			var matched_nodes := find_first_matched_nodes(node, matcher)
-			result.append_array(matched_nodes)
-	return result
-
-
 func _import(gltf_path: String, save_path, options, platform_variants, gen_files):
+	print("Importing: ", gltf_path)
+	if options.import_hierarchy:
+		_import_hierarchy(gltf_path, save_path, options, platform_variants, gen_files)
+	else:
+		_import_mesh_only(gltf_path, save_path, options, platform_variants, gen_files)
+
+
+func _import_mesh_only(gltf_path: String, save_path, options, platform_variants, gen_files):
 	# Init.
 	#print("Source File: ", gltf_path)
 	#print("Save Path: ", save_path)
@@ -86,7 +93,7 @@ func _import(gltf_path: String, save_path, options, platform_variants, gen_files
 	var file = FileAccess.open(gltf_path, FileAccess.READ)
 	if file == null:
 		print("Error: File Not Found!")
-		return ERR_PARSE_ERROR
+		return ERR_FILE_NOT_FOUND
 
 	# load the GLTF file, init as Node.
 	var gltf_document_load := GLTFDocument.new()
@@ -99,7 +106,8 @@ func _import(gltf_path: String, save_path, options, platform_variants, gen_files
 		return error
 
 	# Get all MeshInstance3D nodes.
-	var mesh_nodes := find_first_matched_nodes(root_node, _is_ImporterMeshInstance3D)
+	# FIXME: what the hell did I do here? I need to re-write this mode.
+	var mesh_nodes := Helpers.find_first_matched_nodes(root_node, Lambdas.is_ImporterMeshInstance3D)
 
 	# Add all meshes into MeshLibrary.
 	var i := 0
@@ -110,9 +118,9 @@ func _import(gltf_path: String, save_path, options, platform_variants, gen_files
 		meshLib.set_item_mesh(i, mesh)
 		meshLib.set_item_name(i, mesh_node.name)
 		if options.has("generate_collision_shape") and options.generate_collision_shape:
-			var shape = mesh.create_convex_shape(true,true)
+			var shape = mesh.create_convex_shape(true, true)
 			if shape != null:
-				meshLib.set_item_shapes(i,[shape])
+				meshLib.set_item_shapes(i, [shape])
 		var preview: Array[Texture2D] = EditorInterface.make_mesh_previews([mesh], 64)
 		meshLib.set_item_preview(i, preview[0])
 
@@ -123,4 +131,51 @@ func _import(gltf_path: String, save_path, options, platform_variants, gen_files
 	var filename = save_path + "." + _get_save_extension()
 	return ResourceSaver.save(meshLib, filename)
 
+
+func _import_hierarchy(gltf_path: String, save_path, options, platform_variants, gen_files):
+	var root_node: Node
+	var meshLib: MeshLibrary = MeshLibrary.new()
+	var file = FileAccess.open(gltf_path, FileAccess.READ)
+	if file == null:
+		print("Error: File Not Found!")
+		return ERR_FILE_NOT_FOUND
+
+	# Load the GLTF file and initialize as Node.
+	var gltf_document_load := GLTFDocument.new()
+	var gltf_state_load := GLTFState.new()
+	var error := gltf_document_load.append_from_file(gltf_path, gltf_state_load)
+	if error == OK:
+		root_node = gltf_document_load.generate_scene(gltf_state_load)
+	else:
+		print("Error: %s " % error_string(error))
+		return error
+
+	# Find the root node of the items to be imported.
+	# This is necessary because some programs add an empty node as a parent of the mesh.
+	# We need to step deeper until we find multiple nodes.
+	var items_root = root_node
+	while items_root.get_child_count() == 1:
+		items_root = items_root.get_child(0)
+
+	# Loop through each item, merge their meshes and apply transformations.
+	var i := 0
+	for item: Node3D in items_root.get_children():
+		var mesh: ArrayMesh = Helpers.merge_together_recursively(item)
+
+		meshLib.create_item(i)
+		meshLib.set_item_mesh(i, mesh)
+		meshLib.set_item_name(i, item.name)
+		if options.has("generate_collision_shape") and options.generate_collision_shape:
+			var shape = mesh.create_convex_shape(true, true)
+			if shape != null:
+				meshLib.set_item_shapes(i, [shape])
+
+		var preview: Array[Texture2D] = EditorInterface.make_mesh_previews([mesh], 64)
+		meshLib.set_item_preview(i, preview[0])
+
+		i += 1
+
+	# Save the mesh library.
+	var filename = save_path + "." + _get_save_extension()
+	return ResourceSaver.save(meshLib, filename)
 #endregion

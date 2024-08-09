@@ -22,3 +22,4 @@ mono_crash.*.json
 # Ignore the generated project files
 project.godot
 
+local_tests/
