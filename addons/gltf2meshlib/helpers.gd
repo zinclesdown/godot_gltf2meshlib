@@ -2,22 +2,6 @@ extends Resource
 
 const FlagsDetect := preload("./flagsdetect.gd")
 
-# # DEPRECATED Why did I wrote this???
-# # Found all nodes, Pack them into an Array.
-# # The matcher should accept one argument (Node),returns a bool.
-# static func find_first_matched_nodes(root_node: Node, matcher: Callable) -> Array[Node]:
-# 	var result: Array[Node] = []
-
-# 	for node: Node in root_node.get_children():
-# 		var matches: bool = matcher.call(node)
-# 		if matches == true:
-# 			result.append(node)
-# 			continue
-# 		else:
-# 			var matched_nodes := find_first_matched_nodes(node, matcher)
-# 			result.append_array(matched_nodes)
-# 	return result
-
 
 # Gets all child nodes in any depth, pick the nodes that matches the matcher.
 static func find_all_matched_nodes(root_node: Node, matcher: Callable) -> Array[Node]:
@@ -33,27 +17,7 @@ static func find_all_matched_nodes(root_node: Node, matcher: Callable) -> Array[
 	return result
 
 
-## Merge all Mesh-related nodes under a single node into one Mesh.
-## Similar to merge_together, but using recursion to merge layer by layer.
-## Considering that when importing nodes in the editor, the nodes are not in the tree,
-## and global_transform is not available at that time, so we can only recursively merge layer by layer.
-# static func merge_together_recursively(base_node: Node3D) -> ArrayMesh:
-# 	# Get the Mesh of the current node:
-# 	var new_mesh: ArrayMesh = null
-
-# 	if base_node is MeshInstance3D:
-# 		new_mesh = base_node.mesh as ArrayMesh
-# 	elif base_node is ImporterMeshInstance3D:
-# 		new_mesh = base_node.mesh.get_mesh() as ArrayMesh
-
-# 	for child in base_node.get_children():
-# 		new_mesh = combine_multisurface(
-# 			new_mesh, merge_together_recursively(child), child.transform
-# 		)
-
-# 	return new_mesh
-
-
+## Merge Mesh-related nodes under a single node into one Mesh.
 static func merge_meshs_together_recursively(base_node: Node3D) -> ArrayMesh:
 	# Get the Mesh of the current node:
 	var new_mesh: ArrayMesh = null
@@ -75,6 +39,7 @@ static func merge_meshs_together_recursively(base_node: Node3D) -> ArrayMesh:
 	return new_mesh
 
 
+## same as above, but only merges nodes with '-col' flags.
 static func merge_collisions_together_recursively(base_node: Node3D) -> ArrayMesh:
 	# Get the Mesh of the current node:
 	var new_mesh: ArrayMesh
