@@ -14,15 +14,21 @@ In my case, I used models made with Blockbench, exported as gltf, and imported i
 
 If you encounter any problems, or if you have any suggestions, please let me know in the Issues.
 
-### Modes
+## Requirements
 
-gltf2meshlib has 2 import modes: `import_mesh_only` and `import_hierarchy`.
+Different from godot's default behavior, you need to make sure models you want to import are in the first level. things in sublevels would be imported as a part of the parent object.
 
-the first mode behaves just like what Godot Editor does: it imports all Mesh Nodes into separated Item of MeshLibrary.
+here's an example:
+![example](addons/gltf2meshlib/examples/imgs/structure_example.png)
 
-the second mode would consider hierarchy structure of nodes: that means, if one of your object are composed with multiple Meshs (eg. a large "stones" block consists of 4 small stone meshes), this mode would import them into one single Item, rather than 4 tiny Items.
+## Options
 
-you can change the mode by switching import args `"import_hierarchy"`.
+| Option                           | Description                                                             | Default      |
+| -------------------------------- | ----------------------------------------------------------------------- | ------------ |
+| generate_collision_shape_by_mesh | generate collision shape by its model, rather than "-col" tagged meshs. | false        |
+| generate_preview                 | whether to generate preview for MeshLibrary.                            | true         |
+| model_offset                     | You can adjust model offset via this parameter.                         | Vector3.ZERO |
+| sort_by_name                     | Sort Items in MeshLibrary. Preventing unexpected order.                 | true         |
 
 ### Flags
 
@@ -39,9 +45,13 @@ Here's an example:
 
 You can configure collision by adding meshes that indicates the collision shape of the item, and add `--collision` flag to the item.
 
-## Issues
+## Known Issues
 
-for some reason, the editor might raise annoying "Attempted to call reimport_files() recursively, this is not allowed." error while importing mesh as MeshLibrary. Maybe there's still some issues with my code.
+- re-importing GLTF with opened scene in Editor with GridMap node which binds the imported gltf, would raise `"servers/rendering/renderer_rd/storage_rd/mesh_storage.cpp:632 - Parameter "mesh" is null."`.
+
+- for some reason, the editor might raise annoying "Attempted to call reimport_files() recursively, this is not allowed." error while importing mesh as MeshLibrary.
+
+Thankfully this issue seems not influencing the game, but it's still annoying.Do you got any solutions? I need you help on this :(
 
 let me know more problems you encountered in issues.
 

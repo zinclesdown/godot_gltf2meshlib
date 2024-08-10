@@ -2,22 +2,21 @@ extends Resource
 
 const FlagsDetect := preload("./flagsdetect.gd")
 
+# # DEPRECATED Why did I wrote this???
+# # Found all nodes, Pack them into an Array.
+# # The matcher should accept one argument (Node),returns a bool.
+# static func find_first_matched_nodes(root_node: Node, matcher: Callable) -> Array[Node]:
+# 	var result: Array[Node] = []
 
-# DEPRECATED Why did I wrote this???
-# Found all nodes, Pack them into an Array.
-# The matcher should accept one argument (Node),returns a bool.
-static func find_first_matched_nodes(root_node: Node, matcher: Callable) -> Array[Node]:
-	var result: Array[Node] = []
-
-	for node: Node in root_node.get_children():
-		var matches: bool = matcher.call(node)
-		if matches == true:
-			result.append(node)
-			continue
-		else:
-			var matched_nodes := find_first_matched_nodes(node, matcher)
-			result.append_array(matched_nodes)
-	return result
+# 	for node: Node in root_node.get_children():
+# 		var matches: bool = matcher.call(node)
+# 		if matches == true:
+# 			result.append(node)
+# 			continue
+# 		else:
+# 			var matched_nodes := find_first_matched_nodes(node, matcher)
+# 			result.append_array(matched_nodes)
+# 	return result
 
 
 # Gets all child nodes in any depth, pick the nodes that matches the matcher.
@@ -102,6 +101,7 @@ static func combine_multisurface(
 ) -> ArrayMesh:
 	var new_mesh := ArrayMesh.new()
 
+	# Make sure the mesh is not null.
 	if mesh_base == null:
 		mesh_base = ArrayMesh.new()
 	if mesh_remote == null:
@@ -147,5 +147,51 @@ static func combine_multisurface(
 		new_mesh.surface_set_material(
 			i + mesh_base.get_surface_count(), mesh_remote.surface_get_material(i)
 		)
+
+	return new_mesh
+
+
+## Applys a transform3D to an ArrayMesh. returns a new ArrayMesh. It always returns a valid mesh, even if it might be empty.
+static func apply_transform_to_arraymesh(
+	array_mesh: ArrayMesh, transform: Transform3D
+) -> ArrayMesh:
+	var new_mesh := ArrayMesh.new()
+
+	if not is_instance_valid(array_mesh):
+		push_warning(
+			"apply_transform_to_arraymesh(): array_mesh {} is not valid.".format([array_mesh])
+		)
+		# return null
+	elif array_mesh.get_surface_count() <= 0:
+		push_warning(
+			"apply_transform_to_arraymesh(): array_mesh {} has no surface.".format([array_mesh])
+		)
+		# return null
+
+	# loop through all surfaces, apply the transform.
+	for i_surf in range(array_mesh.get_surface_count()):
+		var surface := array_mesh.surface_get_arrays(i_surf)
+
+		var vertices: PackedVector3Array = surface[ArrayMesh.ARRAY_VERTEX]
+		var normals: PackedVector3Array = surface[ArrayMesh.ARRAY_NORMAL]
+		var uvs: PackedVector2Array = surface[ArrayMesh.ARRAY_TEX_UV]
+
+		# in each surface, we loop through all vertices, apply the transform.
+		for j in range(vertices.size()):
+			var vertex: Vector3 = vertices[j]
+			var normal: Vector3 = normals[j]
+
+			vertex = transform * vertex
+			normal = transform.basis * (normal)
+
+			vertices[j] = vertex
+			normals[j] = normal
+
+		surface[ArrayMesh.ARRAY_VERTEX] = vertices
+		surface[ArrayMesh.ARRAY_NORMAL] = normals
+
+		# build a new ArrayMesh
+		new_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, surface)
+		new_mesh.surface_set_material(i_surf, array_mesh.surface_get_material(i_surf))
 
 	return new_mesh

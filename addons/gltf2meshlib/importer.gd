@@ -54,8 +54,11 @@ func _get_preset_name(preset_index):
 
 func _get_import_options(path, preset_index):
 	return [
-		{"name": "import_hierarchy", "default_value": true},
-		{"name": "generate_collision_shape", "default_value": false},  # Whether to gen collisionshape.
+		# Whether to gen collisionshape simply by mesh. This would ignore "--collision" flags.
+		{"name": "generate_collision_shape_by_mesh", "default_value": false},
+		{"name": "generate_preview", "default_value": true}, # Whether to gen preview.
+		{"name": "model_offset", "default_value": Vector3(0, 0, 0)}, # Default model offset
+		{"name": "sort_by_name", "default_value": true} # Sort by name. preventing unexpected order.
 	]
 
 
@@ -64,11 +67,11 @@ func _get_option_visibility(path, option_name, options):
 
 
 func _get_priority():
-	return 1.0
+	return 0.9
 
 
 func _get_import_order():
-	return 9999
+	return 99
 
 
 #endregion
@@ -77,62 +80,64 @@ func _get_import_order():
 #region importer_logics.
 func _import(gltf_path: String, save_path, options, platform_variants, gen_files):
 	print("Importing: ", gltf_path)
-	if options.import_hierarchy:
-		_import_hierarchy(gltf_path, save_path, options, platform_variants, gen_files)
-	else:
-		_import_mesh_only(gltf_path, save_path, options, platform_variants, gen_files)
+	# if options.import_hierarchy:
+	# 	_import_hierarchy(gltf_path, save_path, options, platform_variants, gen_files)
+	# else:
+	# 	# _import_mesh_only(gltf_path, save_path, options, platform_variants, gen_files)
+	# 	print("Old import mode has been deprecated, sorry.")
 
+# func _import_mesh_only(gltf_path: String, save_path, options, platform_variants, gen_files):
+# 	# Init.
+# 	#print("Source File: ", gltf_path)
+# 	#print("Save Path: ", save_path)
 
-func _import_mesh_only(gltf_path: String, save_path, options, platform_variants, gen_files):
-	# Init.
-	#print("Source File: ", gltf_path)
-	#print("Save Path: ", save_path)
+# 	var root_node: Node
+# 	var meshLib: MeshLibrary = MeshLibrary.new()
+# 	var file = FileAccess.open(gltf_path, FileAccess.READ)
+# 	if file == null:
+# 		print("Error: File Not Found!")
+# 		return ERR_FILE_NOT_FOUND
 
-	var root_node: Node
-	var meshLib: MeshLibrary = MeshLibrary.new()
-	var file = FileAccess.open(gltf_path, FileAccess.READ)
-	if file == null:
-		print("Error: File Not Found!")
-		return ERR_FILE_NOT_FOUND
+# 	# load the GLTF file, init as Node.
+# 	var gltf_document_load := GLTFDocument.new()
+# 	var gltf_state_load := GLTFState.new()
+# 	var error := gltf_document_load.append_from_file(gltf_path, gltf_state_load)
+# 	if error == OK:
+# 		root_node = gltf_document_load.generate_scene(gltf_state_load)
+# 	else:
+# 		print("Error: %s " % error_string(error))
+# 		return error
 
-	# load the GLTF file, init as Node.
-	var gltf_document_load := GLTFDocument.new()
-	var gltf_state_load := GLTFState.new()
-	var error := gltf_document_load.append_from_file(gltf_path, gltf_state_load)
-	if error == OK:
-		root_node = gltf_document_load.generate_scene(gltf_state_load)
-	else:
-		print("Error: %s " % error_string(error))
-		return error
+# 	# Get all MeshInstance3D nodes.
+# 	# FIXME: what the hell did I do here? I need to re-write this mode.
+# 	var mesh_nodes := Helpers.find_first_matched_nodes(root_node, Lambdas.is_ImporterMeshInstance3D)
 
-	# Get all MeshInstance3D nodes.
-	# FIXME: what the hell did I do here? I need to re-write this mode.
-	var mesh_nodes := Helpers.find_first_matched_nodes(root_node, Lambdas.is_ImporterMeshInstance3D)
+# 	# Add all meshes into MeshLibrary.
+# 	var i := 0
+# 	for mesh_node: ImporterMeshInstance3D in mesh_nodes:
+# 		var mesh: ArrayMesh = mesh_node.mesh.get_mesh() # Gets the mesh
 
-	# Add all meshes into MeshLibrary.
-	var i := 0
-	for mesh_node: ImporterMeshInstance3D in mesh_nodes:
-		var mesh: ArrayMesh = mesh_node.mesh.get_mesh()  # Gets the mesh
+# 		meshLib.create_item(i)
+# 		meshLib.set_item_mesh(i, mesh)
+# 		meshLib.set_item_name(i, mesh_node.name)
+# 		if options.has("generate_collision_shape") and options.generate_collision_shape:
+# 			var shape = mesh.create_convex_shape(true, true)
+# 			if shape != null:
+# 				meshLib.set_item_shapes(i, [shape])
+# 		var preview: Array[Texture2D] = EditorInterface.make_mesh_previews([mesh], 64)
+# 		meshLib.set_item_preview(i, preview[0])
 
-		meshLib.create_item(i)
-		meshLib.set_item_mesh(i, mesh)
-		meshLib.set_item_name(i, mesh_node.name)
-		if options.has("generate_collision_shape") and options.generate_collision_shape:
-			var shape = mesh.create_convex_shape(true, true)
-			if shape != null:
-				meshLib.set_item_shapes(i, [shape])
-		var preview: Array[Texture2D] = EditorInterface.make_mesh_previews([mesh], 64)
-		meshLib.set_item_preview(i, preview[0])
+# 		i += 1
 
-		i += 1
+# 	# Save
+# 	root_node.queue_free()
+# 	var filename = save_path + "." + _get_save_extension()
+# 	return ResourceSaver.save(meshLib, filename)
 
-	# Save
-	root_node.queue_free()
-	var filename = save_path + "." + _get_save_extension()
-	return ResourceSaver.save(meshLib, filename)
+# func _import_hierarchy(gltf_path: String, save_path, options, platform_variants, gen_files):
+	# EditorInterface.get_resource_filesystem().resources_reimported
+	# print(EditorFileSystemImportFormatSupportQuery.)
 
-
-func _import_hierarchy(gltf_path: String, save_path, options, platform_variants, gen_files):
 	var root_node: Node
 	var meshLib: MeshLibrary = MeshLibrary.new()
 	var file = FileAccess.open(gltf_path, FileAccess.READ)
@@ -159,36 +164,62 @@ func _import_hierarchy(gltf_path: String, save_path, options, platform_variants,
 
 	# Loop through each item, merge their meshes and apply transformations.
 	var i := 0
-	for item: Node3D in items_root.get_children():
+
+	# Sort?
+	var items_arr: Array[Node] = items_root.get_children()
+	if options["sort_by_name"]:
+		items_arr.sort_custom(Lambdas.NodeNameSortMethod)
+
+	for item: Node3D in items_arr:
 		# Detect flags, see if we should import this item.
 		if FlagsDetect.do_not_import(item.name):
 			continue
 
-		var mesh: ArrayMesh = Helpers.merge_meshs_together_recursively(item)
-		# var mesh := Helpers.merge_collisions_together_recursively(item)
-		# print(mesh)
+		var model_mesh: ArrayMesh = Helpers.merge_meshs_together_recursively(item)
 
+		model_mesh = Helpers.apply_transform_to_arraymesh(
+			model_mesh, Transform3D(Basis.IDENTITY, options["model_offset"])
+		) # implement offset.
+
+		# print("Setting up model for ", item.name)
 		meshLib.create_item(i)
-		meshLib.set_item_mesh(i, mesh)
+		meshLib.set_item_mesh(i, model_mesh)
 		meshLib.set_item_name(i, item.name)
 
-		var shape_mesh := Helpers.merge_collisions_together_recursively(item)
-		var convexshape
-		if shape_mesh:
-			# convexshape = shape_mesh.create_convex_shape()
-			convexshape = shape_mesh.create_trimesh_shape()
-		if convexshape != null:
-			meshLib.set_item_shapes(i, [convexshape])
+		# print("Setting up collision for ", item.name)
+		# Generate collision by mesh, or by models with '-col' flags.
+		if options.generate_collision_shape_by_mesh:
+			# Generate Collision simply by it's Mesh.
+			var shape_mesh := model_mesh.create_trimesh_shape()
+			if shape_mesh != null:
+				meshLib.set_item_shapes(i, [shape_mesh])
+				print("> Generated collision simply by mesh. --collision flags are ignored.")
+		else:
+			# Generate Collision with flag tagged Mesh, ignore model mesh. This is the recommended way.
+			var shape_mesh := Helpers.merge_collisions_together_recursively(item)
 
-		# if options.has("generate_collision_shape") and options.generate_collision_shape:
-		# 	var shape := mesh.create_convex_shape(true, true)
-		# 	if shape != null:
-		# 		meshLib.set_item_shapes(i, [shape])
+			if shape_mesh.get_surface_count() != 0:
+				# convexshape = shape_mesh.create_convex_shape()
+				# print("> Creating convex shape.")
+				shape_mesh = Helpers.apply_transform_to_arraymesh(
+					shape_mesh, Transform3D(Basis.IDENTITY, options["model_offset"])
+				) # implement offset.
+				var convexshape = shape_mesh.create_trimesh_shape()
+				if convexshape != null:
+					meshLib.set_item_shapes(i, [convexshape])
+					print("> Genrated collision by flag -col tagged mesh.")
 
-		var preview: Array[Texture2D] = EditorInterface.make_mesh_previews([mesh], 64)
-		meshLib.set_item_preview(i, preview[0])
+		if options["generate_preview"] == true:
+			if model_mesh.get_surface_count() > 0:
+				# Seems this would raise Error.. with editor with gridmap scene opened. why?
+				var preview: Array[Texture2D] = EditorInterface.make_mesh_previews([model_mesh], 64)
+				meshLib.set_item_preview(i, preview[0])
+			print("> Generated Preview.")
 
 		i += 1
+
+	print("Done processing meshes. Saving...")
+	root_node.queue_free()
 
 	# Save the mesh library.
 	var filename = save_path + "." + _get_save_extension()
